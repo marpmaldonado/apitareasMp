@@ -1,6 +1,7 @@
 from flask import Flask, jsonify, request
 from flask_mysqldb import MySQL
 from config import config
+import matplotlib.pyplot as plt
 
 app = Flask(__name__)
 conexion = MySQL(app)
@@ -68,7 +69,7 @@ def listartareas():
           }
          tareas.append(tarea)
 
-      return jsonify({'Tareas':tarea,'mensaje':"listado de tareas", 'exito':True})
+      return jsonify({'Tareas':tareas,'mensaje':"listado de tareas", 'exito':True})
   
   except Exception as ex:
      return 'Error'
@@ -196,10 +197,89 @@ def buscar_usuarios():
       usuarios.append(usuario)
    return jsonify(usuarios)
 
+#Ruta grafico
+
+@app.route('/grafico', methods=['GET'])
+def generar_grafico():
+    try:
+        cursor = conexion.connection.cursor()
+
+        # Contar usuarios registrados
+        cursor.execute("SELECT COUNT(*) FROM usuarios")
+        usuarios_registrados = cursor.fetchone()[0]
+
+        # Contar tareas registradas
+        cursor.execute("SELECT COUNT(*) FROM tareas")
+        tareas_registradas = cursor.fetchone()[0]
+
+        # Contar tareas en estado terminado
+        cursor.execute("SELECT COUNT(*) FROM tareas WHERE estado = 'terminado'")
+        tareas_terminadas = cursor.fetchone()[0]
+
+        # Contar tareas en estado en proceso
+        cursor.execute("SELECT COUNT(*) FROM tareas WHERE estado = 'en proceso'")
+        tareas_en_proceso = cursor.fetchone()[0]
+
+        # Contar tareas en estado por asignar
+        cursor.execute("SELECT COUNT(*) FROM tareas WHERE estado = 'por asignar'")
+        tareas_por_asignar = cursor.fetchone()[0]
+
+        # Grafico de barras
+        categorias = ['Usuarios', 'Tareas', 'Tareas Terminadas', 'Tareas en Proceso', 'Tareas por Asignar']
+        cantidades = [usuarios_registrados, tareas_registradas, tareas_terminadas, tareas_en_proceso, tareas_por_asignar]
+
+        plt.bar(categorias, cantidades)
+        plt.xlabel('Categoría')
+        plt.ylabel('Cantidad')
+        plt.title('Cantidad de Usuarios y Tareas')
+        plt.show()
+
+        return jsonify({'mensaje': 'Gráfico generado correctamente', 'exito': True})
+
+    except Exception as ex:
+        return jsonify({'mensaje': 'Error al generar el gráfico', 'exito': False, 'error': str(ex)})
+    
+
+#Ruta rol usuario
+@app.route('/grafico_usuario/<int:id_Usuario1>', methods=['GET'])
+def generar_grafico_usuario(id_Usuario1):
+    try:
+        cursor = conexion.connection.cursor()
+
+        # Contar tareas en estado terminado para el usuario
+        cursor.execute("SELECT COUNT(*) FROM tareas WHERE estado = 'terminado' AND id_Usuario1 = %s", (id_Usuario1,))
+        tareas_terminadas = cursor.fetchone()[0]
+
+        # Contar tareas en estado en proceso para el usuario
+        cursor.execute("SELECT COUNT(*) FROM tareas WHERE estado = 'en proceso' AND id_Usuario1 = %s", (id_Usuario1,))
+        tareas_en_proceso = cursor.fetchone()[0]
+
+        # Contar tareas en estado por asignar para el usuario
+        cursor.execute("SELECT COUNT(*) FROM tareas WHERE estado = 'por asignar' AND id_Usuario1 = %s", (id_Usuario1,))
+        tareas_por_asignar = cursor.fetchone()[0]
+
+        # Generar el gráfico de barras
+        categorias = ['Tareas Terminadas', 'Tareas en Proceso', 'Tareas por Asignar']
+        cantidades = [tareas_terminadas, tareas_en_proceso, tareas_por_asignar]
+        colores = ['blue', 'yellow', 'red']
+
+        
+        plt.bar(categorias, cantidades, color=colores)
+        plt.xlabel('Estado de Tareas')
+        plt.ylabel('Cantidad')
+        plt.title(f'Cantidad de Tareas del Usuario {id_Usuario1}')
+        plt.show()
+
+        # Convertir el gráfico en una imagen para mostrar en el navegador
+      
+
+        return jsonify({'mensaje': 'Gráfico generado correctamente', 'exito': True,})
+
+    except Exception as ex:
+        return jsonify({'mensaje': 'Error al generar el gráfico', 'exito': False, 'error': str(ex)})
 
 
 
-
-if __name__=='__main__':
+if __name__=='main_':
   app.config.from_object(config['config'])
   app.run(debug=True)
